@@ -1,0 +1,18 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ code }} · {{ title }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:760px;">
+    <div class="card-lg center">
+      <span class="eyebrow">{{ code }} · {{ title }}</span>
+      <h1 style="font-size:clamp(2rem,5vw,3rem);">{{ title }}</h1>
+      <p class="lede">{{ message }}</p>
+      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:1.4rem;">
+        <a class="btn btn-primary" href="{{ url_for('home') }}">Go to homepage</a>
+        <a class="btn btn-secondary" href="{{ url_for('resume_entry') }}">Resume Builder</a>
+        <a class="btn btn-secondary" href="{{ url_for('career_home') }}">CareerGuide</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

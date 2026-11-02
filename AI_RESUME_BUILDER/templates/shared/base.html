@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Build an ATS-friendly resume, analyse your resume quality, and discover careers with personalised learning roadmaps.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" id="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{{ url_for('home') }}" aria-label="{{ site_name }} home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" role="img" focusable="false">
+            <path d="M7 5h12l6 6v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="currentColor" opacity=".18"/>
+            <path d="M7 5h12l6 6v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M19 5v6h6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M10 17h11M10 21h8M10 13h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>Resume<span>AI</span></strong>
+          <small>Career Suite</small>
+        </span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="primary-nav" id="primary-nav" aria-label="Primary">
+        <a href="{{ url_for('home') }}" class="nav-link {% if request.endpoint == 'home' %}is-active{% endif %}">Home</a>
+        <a href="{{ url_for('resume_entry') }}" class="nav-link {% if request.endpoint and (request.endpoint.startswith('resume') or request.endpoint == 'generate') %}is-active{% endif %}">Resume Builder</a>
+        <a href="{{ url_for('ats_page') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('ats') %}is-active{% endif %}">ATS Checker</a>
+        <a href="{{ url_for('career_home') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('career') %}is-active{% endif %}">CareerGuide</a>
+        <a href="{{ url_for('resume_entry') }}" class="btn btn-primary btn-sm nav-cta">Build your resume</a>
+      </nav>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack container" role="status" aria-live="polite">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">
+            <span class="flash-icon" aria-hidden="true">
+              {% if category == 'success' %}✓{% elif category == 'error' %}!{% elif category == 'warning' %}▲{% else %}i{% endif %}
+            </span>
+            <p>{{ message }}</p>
+            <button class="flash-close" type="button" aria-label="Dismiss message">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main id="main" class="{% block main_class %}page-main{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a class="brand brand-light" href="{{ url_for('home') }}">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" focusable="false">
+              <path d="M7 5h12l6 6v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M19 5v6h6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M10 17h11M10 21h8M10 13h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="brand-text"><strong>Resume<span>AI</span></strong><small>Career Suite</small></span>
+        </a>
+        <p>One workspace for professional resumes, honest ATS feedback and career direction. Built as an academic project in Artificial Intelligence &amp; Data Science.</p>
+      </div>
+      <div class="footer-col">
+        <h3>Resume Builder</h3>
+        <a href="{{ url_for('resume_new') }}">Create a new resume</a>
+        <a href="{{ url_for('resume_entry') }}#upload">Upload &amp; edit</a>
+        <a href="{{ url_for('ats_page') }}">ATS analyser</a>
+        <a href="{{ url_for('resume_preview') }}">Resume preview</a>
+      </div>
+      <div class="footer-col">
+        <h3>CareerGuide</h3>
+        <a href="{{ url_for('career_home') }}#guidance">Career guidance form</a>
+        <a href="{{ url_for('career_home') }}#features">How it works</a>
+        <a href="{{ url_for('career_home') }}#about">About CareerGuide</a>
+        <a href="{{ url_for('career_home') }}#careers">Career library</a>
+      </div>
+      <div class="footer-col">
+        <h3>Good to know</h3>
+        <a href="{{ url_for('ats_page') }}#scoring">How scoring works</a>
+        <p class="footer-note">ATS scores here are estimates from an open, documented rule set — not an employer's proprietary ATS.</p>
+      </div>
+    </div>
+    <div class="footer-bottom container">
+      <p>© 2026 AI Resume Builder &amp; Career Recommendation System</p>
+      <p>© 2026 CareerGuide | Career Guidance System</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/base.js') }}" defer></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

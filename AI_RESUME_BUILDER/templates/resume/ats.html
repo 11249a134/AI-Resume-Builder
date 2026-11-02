@@ -1,0 +1,361 @@
+{% extends "shared/base.html" %}
+{% block title %}ATS Resume Analyzer · {{ site_name }}{% endblock %}
+{% block meta_description %}Analyze your resume against ten weighted categories and get a transparent, estimated ATS compatibility score with specific fixes.{% endblock %}
+{% block body_class %}resume-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/resume.css') }}">{% endblock %}
+
+{% block content %}
+<section class="ats-main">
+  <div class="container">
+    <div class="ats-hero">
+      <div>
+        <span class="eyebrow amber">Module 1 · ATS Resume Analyzer</span>
+        <h1>How well does your resume read?</h1>
+        <p class="lede" style="max-width:64ch;margin-bottom:0;">
+          Ten weighted checks produce an estimated ATS compatibility score out of 100. Every point is
+          traceable, every deduction is explained, and the same resume always produces the same score.
+        </p>
+      </div>
+      {% if resume and resume.personal.full_name %}
+        <div class="card" style="padding:1rem 1.2rem;min-width:230px;">
+          <p class="small muted" style="margin:0 0 .2rem;">Saved resume</p>
+          <strong>{{ resume.personal.full_name }}</strong>
+          <p class="small muted" style="margin:.2rem 0 0;">{{ resume.target_role or 'No target role set' }}</p>
+          <a class="small" href="{{ url_for('resume_edit') }}">Edit resume →</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="ats-layout">
+      <aside class="ats-form-card">
+        <h3 style="font-size:1rem;">Analyze a resume</h3>
+        <form action="{{ url_for('ats_analyze') }}" method="post" enctype="multipart/form-data" id="ats-form">
+          <div class="source-toggle" role="radiogroup" aria-label="Resume source">
+            <label>
+              <input type="radio" name="source" value="stored" {% if not uploaded_name or resume %}checked{% endif %} {% if not resume %}disabled{% endif %} data-source-toggle>
+              Saved resume
+            </label>
+            <label>
+              <input type="radio" name="source" value="upload" {% if not resume %}checked{% endif %} data-source-toggle>
+              Upload file
+            </label>
+          </div>
+
+          <div data-source-panel="stored" {% if not resume %}hidden{% endif %}>
+            {% if resume %}
+              <div class="card" style="padding:.85rem .95rem;margin-bottom:1rem;background:var(--surface-2);">
+                <p class="small" style="margin:0;"><strong>{{ resume.personal.full_name }}</strong></p>
+                <p class="small muted" style="margin:.2rem 0 0;">
+                  {{ resume.projects|length }} project(s) · {{ (resume.skills.technical|length) + (resume.skills.soft|length) }} skills ·
+                  {{ resume.certifications|length }} certification(s)
+                </p>
+                <a class="small" href="{{ url_for('resume_preview') }}">Open preview →</a>
+              </div>
+            {% else %}
+              <div class="callout warning" style="font-size:.84rem;">No saved resume yet. Create one, or choose “Upload file”.</div>
+            {% endif %}
+          </div>
+
+          <div data-source-panel="upload" {% if resume %}hidden{% endif %}>
+            <div class="field">
+              <label for="ats_resume_file">Resume file</label>
+              <input class="input" type="file" id="ats_resume_file" name="resume_file" accept=".pdf,.docx">
+              <p class="field-help">PDF or DOCX · up to {{ max_upload_mb }} MB. The upload is analysed and then deleted from the server.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="ats_target_role">Target role <span class="optional">(optional)</span></label>
+            <select class="select" id="ats_target_role" name="target_role">
+              <option value="">Auto-detect from my skills</option>
+              {% for choice in career_choices %}
+                <option value="{{ choice.name }}" {% if target_role == choice.name %}selected{% endif %}>{{ choice.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="field-help">Keyword matching uses this role's required skills. Auto-detect infers the closest career from your resume.</p>
+          </div>
+
+          <button class="btn btn-primary btn-block" type="submit">Analyze resume</button>
+          <p class="small muted" style="margin:.7rem 0 0;">Results are an estimate from this app's open rule set — not an employer's ATS.</p>
+        </form>
+      </aside>
+
+      <section class="ats-panel">
+        {% if not analysis %}
+          <div class="ats-empty">
+            <span class="eyebrow">Ready when you are</span>
+            <h2 style="font-size:1.5rem;">Run your first analysis</h2>
+            <p class="muted" style="max-width:52ch;margin:0 auto 1.2rem;">
+              Analyze your saved resume or upload a PDF/DOCX. You will get a score out of 100, category
+              breakdowns, missing keywords, concrete fixes and a learning plan for the gaps.
+            </p>
+            <a class="btn btn-secondary" href="{{ url_for('resume_entry') }}">Create or upload a resume first</a>
+          </div>
+          <div style="margin-top:1.6rem;">
+            <h3>What gets measured</h3>
+            <div class="category-list">
+              {% for weight in [{'label':'Contact Information','points':12},{'label':'Career Objective','points':10},{'label':'Education','points':15},{'label':'Technical & Soft Skills','points':15},{'label':'Projects','points':15},{'label':'Certifications','points':5},{'label':'Experience','points':8},{'label':'Relevant Keywords','points':10},{'label':'Formatting','points':6},{'label':'Readability','points':4}] %}
+                <div class="category-item">
+                  <div class="category-head">
+                    <h4>{{ weight.label }}</h4>
+                    <span class="pts">{{ weight.points }} pts</span>
+                  </div>
+                  <div class="progress"><span style="width: {{ weight.points }}%"></span></div>
+                </div>
+              {% endfor %}
+            </div>
+            <p class="small muted" style="margin-top:1rem;">Total: 100 points. The full method is documented at the bottom of this page.</p>
+          </div>
+        {% else %}
+          <div class="score-hero">
+            <div class="gauge {{ analysis.grade_class }}" style="--value: {{ analysis.score }};" role="img" aria-label="Estimated ATS compatibility {{ analysis.score }} out of 100">
+              <div class="gauge-inner"><strong>{{ analysis.score }}</strong><span>out of 100</span></div>
+            </div>
+            <div class="score-summary">
+              <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem;">
+                <span class="pill pill-brand">Estimated ATS compatibility</span>
+                <span class="pill">{{ analysis.mode_label }}</span>
+              </div>
+              <h2>{{ analysis.grade }}</h2>
+              <p class="muted" style="margin-bottom:.6rem;">
+                Matched against <strong>{{ analysis.keyword_info.target }}</strong>.
+                {% if analysis.mode == 'extracted' and uploaded_name %}Source file: {{ uploaded_name }}.{% endif %}
+              </p>
+              <div class="score-meta">
+                <span class="pill pill-mint">{{ analysis.found_keywords|length }}/{{ analysis.keyword_info.expected|length }} keywords</span>
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('resume_edit') if resume else url_for('resume_entry') }}">Improve resume</a>
+                <a class="btn btn-ghost btn-sm" href="#scoring">How this is scored</a>
+              </div>
+            </div>
+          </div>
+
+          <p class="small muted" style="margin-top:-.6rem;margin-bottom:1.2rem;">{{ analysis.consumer_note }}</p>
+
+          {% if analysis.mode == 'extracted' and analysis.extraction %}
+            <div class="callout warning" style="margin-bottom:1.2rem;">
+              <strong>Analysed from extracted text.</strong>
+              {% if analysis.extraction.meta.get('format') %}Format: {{ analysis.extraction.meta.format }}.{% endif %}
+              {% if analysis.extraction.meta.get('pages') %} {{ analysis.extraction.meta.pages }} page(s).{% endif %}
+              {% if analysis.extraction.confidence is not none %} Extraction confidence: {{ (analysis.extraction.confidence * 100)|round|int }}%.{% endif %}
+              {% if analysis.extraction.warnings %}
+                <ul style="margin:.4rem 0 0;padding-left:1.1rem;font-size:.83rem;">
+                  {% for warning in analysis.extraction.warnings %}<li>{{ warning }}</li>{% endfor %}
+                </ul>
+              {% endif %}
+              <p class="small" style="margin:.5rem 0 0;">
+                Extracted: {{ analysis.extraction.parsed_counts.education }} education,
+                {{ analysis.extraction.parsed_counts.skills }} skills,
+                {{ analysis.extraction.parsed_counts.projects }} projects,
+                {{ analysis.extraction.parsed_counts.certifications }} certifications.
+                <a href="{{ url_for('resume_entry') }}#upload">Upload it again to edit the fields</a> if extraction missed something.
+              </p>
+            </div>
+          {% endif %}
+
+          <h3>Score breakdown</h3>
+          <p class="small muted" style="margin-top:-.3rem;">Each category earns points from named checks. Open a category to see exactly what passed and why points were lost.</p>
+          <div class="category-list">
+            {% for category in analysis.categories %}
+              <article class="category-item">
+                <div class="category-head">
+                  <h4>{{ category.label }}</h4>
+                  <span class="pts">{{ category.score }} / {{ category.max }} pts</span>
+                </div>
+                <div class="progress {% if category.percent >= 80 %}mint{% elif category.percent >= 50 %}amber{% else %}rose{% endif %}">
+                  <span style="width: {{ category.percent }}%;"></span>
+                </div>
+                <details>
+                  <summary>{{ category.checks|length }} checks · {{ category.deductions|length }} deduction(s)</summary>
+                  <ul class="check-list">
+                    {% for check in category.checks %}
+                      <li>
+                        <span class="mark {% if check.passed %}pass{% else %}fail{% endif %}">{% if check.passed %}✓{% else %}!{% endif %}</span>
+                        <span>
+                          {{ check.label }} <strong>({{ check.earned }}/{{ check.points }})</strong>
+                          {% if check.deduction %}<span class="why">{{ check.deduction }}</span>{% elif check.evidence %}<span class="why">{{ check.evidence }}</span>{% endif %}
+                        </span>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </details>
+              </article>
+            {% endfor %}
+          </div>
+
+          <div class="ats-columns">
+            <div class="insight-card">
+              <h3>✓ Strengths</h3>
+              <ul>{% for item in analysis.strengths %}<li>{{ item }}</li>{% endfor %}</ul>
+            </div>
+            <div class="insight-card">
+              <h3>△ What to fix</h3>
+              <ul>
+                {% for item in analysis.weaknesses %}<li>{{ item }}</li>{% endfor %}
+                {% if not analysis.weaknesses %}<li>No major weaknesses detected by the checks. Keep the resume current.</li>{% endif %}
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-top:1.4rem;">
+            <h3>Missing keywords</h3>
+            {% if analysis.missing_keywords %}
+              <p class="small muted">Expected for {{ analysis.keyword_info.target }} but not found in your resume. Add them only where they are genuinely true.</p>
+              <div class="keyword-cloud">
+                {% for keyword in analysis.missing_keywords %}<span class="pill pill-amber">{{ keyword }}</span>{% endfor %}
+              </div>
+            {% else %}
+              <p class="small muted">No missing keywords for this target role — strong coverage.</p>
+            {% endif %}
+            {% if analysis.found_keywords %}
+              <details style="margin-top:.6rem;font-size:.84rem;">
+                <summary style="cursor:pointer;color:var(--muted);font-weight:600;">Found keywords ({{ analysis.found_keywords|length }})</summary>
+                <div class="keyword-cloud" style="margin-top:.5rem;">
+                  {% for keyword in analysis.found_keywords %}<span class="pill pill-mint">{{ keyword }}</span>{% endfor %}
+                </div>
+              </details>
+            {% endif %}
+          </div>
+
+          <div style="margin-top:1.6rem;">
+            <h3>Improvement suggestions</h3>
+            <ul class="suggestion-list">
+              {% for suggestion in analysis.suggestions %}
+                <li class="suggestion-item {{ suggestion.priority|lower }}">
+                  <h4>{{ suggestion.title }} <span class="category">{{ suggestion.category }} · {{ suggestion.priority }}</span></h4>
+                  <p>{{ suggestion.detail }}</p>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          {% if analysis.missing_sections %}
+            <div class="callout warning" style="margin-top:1.2rem;">
+              <strong>Missing sections:</strong>
+              {{ analysis.missing_sections|join(', ') }}.
+              {% if analysis.optional_missing %}{{ analysis.optional_missing|join(', ') }} does not block a fresher resume.{% endif %}
+            </div>
+          {% endif %}
+
+          {% if analysis.learning and analysis.learning.career %}
+            <div style="margin-top:1.8rem;">
+              <div class="split" style="margin-bottom:.6rem;">
+                <div>
+                  <h3 style="margin-bottom:.2rem;">Skill and study recommendations</h3>
+                  <p class="small muted" style="margin:0;">Targeted at <strong>{{ analysis.learning.career.name }}</strong> — {{ analysis.learning.career.category }}.</p>
+                </div>
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('career_home') }}">Explore this career in CareerGuide</a>
+              </div>
+
+              {% if analysis.learning.skills_to_improve %}
+                <p class="small muted">Skills to improve from your current resume:</p>
+                <div class="keyword-cloud" style="margin-bottom:1rem;">
+                  {% for skill in analysis.learning.skills_to_improve %}<span class="pill pill-brand">{{ skill }}</span>{% endfor %}
+                </div>
+              {% endif %}
+
+              <div class="roadmap-mini">
+                {% for level in analysis.learning.roadmap %}
+                  <div class="level">
+                    <h4>{{ level.label }}</h4>
+                    {% if level.focus_skills %}<p class="small" style="margin:0 0 .3rem;"><strong>Focus skills:</strong> {{ level.focus_skills|join(', ') }}</p>{% endif %}
+                    <ul>
+                      {% for topic in level.topics %}<li>{{ topic }}</li>{% endfor %}
+                      {% for project in level.projects %}<li><strong>Project:</strong> {{ project.title }}</li>{% endfor %}
+                    </ul>
+                  </div>
+                {% endfor %}
+              </div>
+
+              {% if analysis.learning.resources %}
+                <h3 style="margin-top:1.4rem;">Recommended learning resources</h3>
+                <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+                  {% for resource in analysis.learning.resources %}
+                    <article class="card" style="padding:1rem;">
+                      <div class="split" style="margin-bottom:.35rem;">
+                        <strong style="font-size:.92rem;">{{ resource.title }}</strong>
+                        <span class="pill pill-mint">{{ resource.cost }}</span>
+                      </div>
+                      <p class="small muted" style="margin:0 0 .4rem;">{{ resource.description }}</p>
+                      <p class="small muted" style="margin:0 0 .6rem;">{{ resource.provider }} · {{ resource.level }}</p>
+                      <a class="btn btn-secondary btn-sm" href="{{ resource.url }}" target="_blank" rel="noopener noreferrer">Visit resource ↗</a>
+                    </article>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {% if analysis.coach and analysis.coach.text %}
+            <div class="callout mint" style="margin-top:1.4rem;">
+              <strong>{% if analysis.coach.source == 'ai' %}AI coach summary{% else %}Coaching note{% endif %}</strong>
+              <p style="margin:.35rem 0 0;">{{ analysis.coach.text }}</p>
+            </div>
+          {% elif analysis.coach and analysis.coach.note %}
+            <p class="small muted" style="margin-top:1rem;">{{ analysis.coach.note }}</p>
+          {% endif %}
+
+          <div class="builder-actions" style="margin-top:1.4rem;">
+            <p class="note">Scoring engine: {{ analysis.scoring_method }}</p>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+              <a class="btn btn-secondary" href="{{ url_for('resume_edit') if resume else url_for('resume_entry') }}">Edit resume</a>
+              <a class="btn btn-primary" href="#ats-form">Analyze again</a>
+            </div>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+
+    <section id="scoring" class="section" style="padding-bottom:0;">
+      <div class="card-lg">
+        <span class="eyebrow">Transparency</span>
+        <h2>How the ATS compatibility score is calculated</h2>
+        <p>
+          The analyser is deterministic. It inspects the resume's content and structure, awards points
+          per check and reports every deduction. The same resume always produces the same score, and
+          no score is invented, randomised or padded. It is an <strong>estimated</strong> resume-quality
+          and ATS-compatibility measure — not output from an employer's proprietary ATS.
+        </p>
+        <div class="grid" style="grid-template-columns:1.2fr .8fr;gap:1.5rem;align-items:start;">
+          <div>
+            <table class="method-table">
+              <thead><tr><th>Category</th><th>What earns points</th><th>Max</th></tr></thead>
+              <tbody>
+                <tr><td>Contact</td><td>Name, valid email, phone, location, one professional link</td><td>12</td></tr>
+                <tr><td>Career objective</td><td>Present, 20–85 words, names a role or relevant skills</td><td>10</td></tr>
+                <tr><td>Education</td><td>Entries, institution + degree, years, CGPA/percentage</td><td>15</td></tr>
+                <tr><td>Skills</td><td>Five+ technical skills, eight+ total, soft skills, role relevance</td><td>15</td></tr>
+                <tr><td>Projects</td><td>Presence, depth, described work, technologies, link</td><td>15</td></tr>
+                <tr><td>Certifications</td><td>Any certification, issuer and date</td><td>5</td></tr>
+                <tr><td>Experience</td><td>Entries, responsibilities, measurable achievements</td><td>8</td></tr>
+                <tr><td>Keywords</td><td>Match against the target role's required skills</td><td>10</td></tr>
+                <tr><td>Formatting</td><td>Selectable text, bullets, line length, no tables, contact in text, dates</td><td>6</td></tr>
+                <tr><td>Readability</td><td>Bullet length, action verbs, concise objective, professional voice</td><td>4</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h3>Score bands</h3>
+            <ul class="small">
+              <li><strong>85–100</strong> Excellent — ATS ready</li>
+              <li><strong>70–84</strong> Strong — small fixes needed</li>
+              <li><strong>55–69</strong> Moderate — several gaps</li>
+              <li><strong>Below 55</strong> Needs work</li>
+            </ul>
+            <h3 style="margin-top:1.2rem;">Notes on fairness</h3>
+            <ul class="small">
+              <li>Freshers cannot earn the 8 experience points; that is explained in the deduction rather than hidden.</li>
+              <li>Keywords are matched with synonyms and whole-term comparison, never by counting stuffing.</li>
+              <li>A scanned PDF without selectable text cannot be read, and the score says so instead of guessing.</li>
+              <li>Changing a template does not change the score; changing real content does.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/ats.js') }}" defer></script>
+{% endblock %}

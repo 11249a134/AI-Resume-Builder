@@ -1,0 +1,209 @@
+{% extends "shared/base.html" %}
+{% block title %}Resume preview · {{ site_name }}{% endblock %}
+{% block body_class %}resume-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/resume.css') }}">{% endblock %}
+{% set tpl = templates_catalog|selectattr('id', 'equalto', resume.template)|first %}
+
+{% macro bullets(text) -%}
+  <ul class="r-bullets">
+    {%- for line in (text or '').split('\n') if line.strip() -%}
+      <li>{{ line.strip(' -•*·') }}</li>
+    {%- endfor -%}
+  </ul>
+{%- endmacro %}
+
+{% block content %}
+<section class="preview-main">
+  <div class="container">
+    <div class="preview-toolbar">
+      <div class="toolbar-group">
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('resume_edit') }}">← Edit resume</a>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('resume_download') }}">Download PDF</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('ats_page') }}">Analyse ATS</a>
+      </div>
+      <div class="spacer"></div>
+      <form action="{{ url_for('resume_template') }}" method="post">
+        <label class="small muted" for="template-switch">Template</label>
+        <select class="select" id="template-switch" name="template">
+          {% for choice in templates_catalog %}
+            <option value="{{ choice.id }}" {% if choice.id == resume.template %}selected{% endif %}>{{ choice.name }}</option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="next" value="{{ url_for('resume_preview') }}">
+        <button class="btn btn-secondary btn-sm" type="submit">Apply</button>
+      </form>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('resume_entry') }}">Start over</a>
+    </div>
+
+    <div class="preview-layout">
+      <article class="resume-sheet tpl-{{ resume.template }}" id="resume-sheet">
+        <header class="r-head">
+          <div class="r-identity">
+            <h1 class="r-name">{{ resume.personal.full_name or 'Your Name' }}</h1>
+            {% if resume.target_role %}<p class="r-role">{{ resume.target_role }}</p>{% endif %}
+            <p class="r-contact">
+              {% if resume.personal.email %}<span>{{ resume.personal.email }}</span>{% endif %}
+              {% if resume.personal.phone %}<span>{{ resume.personal.phone }}</span>{% endif %}
+              {% if resume.personal.location %}<span>{{ resume.personal.location }}</span>{% endif %}
+            </p>
+            {% if resume.personal.linkedin or resume.personal.github or resume.personal.portfolio %}
+              <div class="r-links">
+                {% if resume.personal.linkedin %}<a href="{{ resume.personal.linkedin }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>{% endif %}
+                {% if resume.personal.github %}<a href="{{ resume.personal.github }}" target="_blank" rel="noopener noreferrer">GitHub</a>{% endif %}
+                {% if resume.personal.portfolio %}<a href="{{ resume.personal.portfolio }}" target="_blank" rel="noopener noreferrer">Portfolio</a>{% endif %}
+              </div>
+            {% endif %}
+          </div>
+          {% if resume.personal.photo %}
+            <img class="r-photo" src="{{ url_for('resume_photo', resume_id=resume.id) }}?v={{ resume.updated_at }}" alt="Profile photograph of {{ resume.personal.full_name }}">
+          {% else %}
+            <div class="r-initials" aria-hidden="true">{{ resume.personal.full_name|initials }}</div>
+          {% endif %}
+        </header>
+
+        {% if resume.objective %}
+          <section class="r-section">
+            <h2>Career Objective</h2>
+            <p class="r-text">{{ resume.objective }}</p>
+          </section>
+        {% endif %}
+
+        {% if resume.education %}
+          <section class="r-section">
+            <h2>Education</h2>
+            {% for entry in resume.education %}
+              <div class="r-entry">
+                <div class="r-entry-head">
+                  <span>{{ entry.institution or 'Institution' }}</span>
+                  {% if entry.start_year or entry.grad_year %}<span class="r-entry-meta">{{ entry.start_year }}{% if entry.grad_year and entry.grad_year != entry.start_year %} – {{ entry.grad_year }}{% elif entry.grad_year and not entry.start_year %}{{ entry.grad_year }}{% endif %}</span>{% endif %}
+                </div>
+                <p class="r-entry-sub">
+                  {% if entry.degree or entry.department %}
+                    {{ entry.degree }}{% if entry.degree and entry.department %} · {% endif %}{{ entry.department }}
+                  {% endif %}
+                  {% if entry.score %} <span class="r-entry-meta">| {{ entry.score }}</span>{% endif %}
+                </p>
+              </div>
+            {% endfor %}
+          </section>
+        {% endif %}
+
+        {% if resume.skills.technical or resume.skills.soft %}
+          <section class="r-section">
+            <h2>Skills</h2>
+            {% if resume.skills.technical %}
+              <p class="r-skillline"><strong>Technical:</strong> {{ resume.skills.technical|join(', ') }}</p>
+            {% endif %}
+            {% if resume.skills.soft %}
+              <p class="r-skillline"><strong>Professional:</strong> {{ resume.skills.soft|join(', ') }}</p>
+            {% endif %}
+          </section>
+        {% endif %}
+
+        {% if resume.projects %}
+          <section class="r-section">
+            <h2>Projects</h2>
+            {% for project in resume.projects %}
+              <div class="r-entry">
+                <div class="r-entry-head">
+                  <span>{{ project.title or 'Project' }}</span>
+                  {% if project.url %}<a class="r-entry-meta" href="{{ project.url }}" target="_blank" rel="noopener noreferrer">View project</a>{% endif %}
+                </div>
+                {% if project.technologies %}<p class="r-entry-sub"><em>{{ project.technologies }}</em></p>{% endif %}
+                {% if project.description %}{{ bullets(project.description) }}{% endif %}
+              </div>
+            {% endfor %}
+          </section>
+        {% endif %}
+
+        {% if resume.certifications %}
+          <section class="r-section">
+            <h2>Certifications</h2>
+            <ul class="r-cert">
+              {% for cert in resume.certifications %}
+                <li>
+                  <strong>{{ cert.name or 'Certification' }}</strong>
+                  {% if cert.organization %} — {{ cert.organization }}{% endif %}
+                  {% if cert.issue_date %}, {{ cert.issue_date|pretty }}{% endif %}
+                  {% if cert.credential_id %} <span class="r-entry-meta">(ID: {{ cert.credential_id }})</span>{% endif %}
+                  {% if cert.url %} · <a href="{{ cert.url }}" target="_blank" rel="noopener noreferrer">Verify</a>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+
+        {% if resume.experience %}
+          <section class="r-section">
+            <h2>Experience</h2>
+            {% for job in resume.experience %}
+              <div class="r-entry">
+                <div class="r-entry-head">
+                  <span>{{ job.title or job.company or 'Role' }}</span>
+                  {% if job.duration %}<span class="r-entry-meta">{{ job.duration }}</span>{% endif %}
+                </div>
+                {% if job.company and job.title %}<p class="r-entry-sub">{{ job.company }}</p>{% endif %}
+                {% if job.responsibilities %}{{ bullets(job.responsibilities) }}{% endif %}
+                {% if job.achievements %}{{ bullets(job.achievements) }}{% endif %}
+              </div>
+            {% endfor %}
+          </section>
+        {% elif resume.experience_status == 'fresher' %}
+          <section class="r-section">
+            <h2>Experience</h2>
+            <p class="r-text">Fresher — actively building practical skills through academic projects and certifications.</p>
+          </section>
+        {% endif %}
+      </article>
+
+      <aside class="preview-side">
+        <div class="aside-card">
+          <h3>Resume sections</h3>
+          <ul class="section-status">
+            <li><span class="tick {% if resume.personal.full_name and resume.personal.email %}on{% else %}off{% endif %}">{% if resume.personal.full_name and resume.personal.email %}✓{% else %}!{% endif %}</span> Personal information</li>
+            <li><span class="tick {% if resume.objective %}on{% else %}off{% endif %}">{% if resume.objective %}✓{% else %}!{% endif %}</span> Career objective</li>
+            <li><span class="tick {% if resume.education %}on{% else %}off{% endif %}">{% if resume.education %}✓{% else %}!{% endif %}</span> Education</li>
+            <li><span class="tick {% if resume.skills.technical or resume.skills.soft %}on{% else %}off{% endif %}">{% if resume.skills.technical or resume.skills.soft %}✓{% else %}!{% endif %}</span> Skills</li>
+            <li><span class="tick {% if resume.projects %}on{% else %}off{% endif %}">{% if resume.projects %}✓{% else %}!{% endif %}</span> Projects</li>
+            <li><span class="tick {% if resume.certifications %}on{% else %}off{% endif %}">{% if resume.certifications %}✓{% else %}!{% endif %}</span> Certifications</li>
+            <li><span class="tick {% if resume.experience or resume.experience_status != 'has' %}on{% else %}off{% endif %}">{% if resume.experience or resume.experience_status != 'has' %}✓{% else %}!{% endif %}</span> Experience {% if resume.experience_status != 'has' %}(fresher){% endif %}</li>
+          </ul>
+        </div>
+
+        <div class="aside-card">
+          <h3>Next steps</h3>
+          <p class="small muted">Check how an ATS parser reads this resume, then fix the weak categories.</p>
+          <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('ats_page') }}">Analyse ATS compatibility</a>
+          <a class="btn btn-secondary btn-sm btn-block" href="{{ url_for('career_home') }}" style="margin-top:.5rem;">Find matching careers</a>
+          <p class="pdf-note" style="margin:.8rem 0 0;">PDF keeps the same section order, spacing and photo position.</p>
+        </div>
+
+        <div class="aside-card">
+          <h3>Current template</h3>
+          <p class="small" style="margin-bottom:.4rem;"><strong>{{ tpl.name if tpl else 'Modern Professional' }}</strong></p>
+          <p class="small muted" style="margin:0;">{{ tpl.tagline if tpl else '' }}</p>
+          <p class="small muted" style="margin-top:.6rem;">Updated {{ resume.updated_at.replace('T', ' ').replace('+00:00', ' UTC') }}</p>
+        </div>
+
+        {% if resume.original_file %}
+          <div class="aside-card">
+            <h3>Uploaded original</h3>
+            <p class="small muted">{{ resume.original_file.name }} — preserved unchanged.</p>
+            {% if resume.original_file.path %}
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('resume_original', resume_id=resume.id) }}">Download original</a>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <div class="aside-card">
+          <h3>Privacy</h3>
+          <p class="small muted">This resume and its uploads are stored only in the app's local <code>data/</code> folder on this machine.</p>
+          <form action="{{ url_for('resume_delete') }}" method="post" onsubmit="return confirm('Delete this saved resume and its uploaded files? This cannot be undone.');">
+            <button class="btn btn-danger btn-sm" type="submit">Delete saved resume</button>
+          </form>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,15 @@
+<div class="cg-subnav">
+  <div class="container cg-subnav-inner">
+    <a class="cg-brand" href="{{ url_for('career_home') }}" aria-label="CareerGuide home">
+      <span class="cg-logo" aria-hidden="true">◈</span>
+      <span class="cg-brand-text"><strong>CareerGuide</strong><small>Career Guidance System</small></span>
+    </a>
+    <nav class="cg-nav" aria-label="CareerGuide">
+      <a href="{{ url_for('career_home') }}">Home</a>
+      <a href="{{ url_for('career_home') }}#guidance">Career Guidance</a>
+      <a href="{{ url_for('career_home') }}#about">About</a>
+      <a href="{{ url_for('resume_entry') }}" class="cg-link-app">Resume Builder</a>
+      <a href="{{ url_for('home') }}" class="cg-back">← Main app</a>
+    </nav>
+  </div>
+</div>

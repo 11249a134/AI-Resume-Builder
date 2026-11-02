@@ -1,0 +1,95 @@
+{% extends "shared/base.html" %}
+{% block title %}Resume Builder · {{ site_name }}{% endblock %}
+{% block meta_description %}Create a new ATS-friendly resume or upload an existing PDF/DOCX resume, edit the extracted content and export a clean PDF.{% endblock %}
+{% block body_class %}resume-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/resume.css') }}">{% endblock %}
+
+{% block content %}
+<section class="resume-hero">
+  <div class="container">
+    <span class="eyebrow">Module 1 · AI Resume Builder</span>
+    <h1>Your resume, built properly.</h1>
+    <p class="lede">
+      Start from a blank guided form, or upload the resume you already have and keep every detail
+      you have already earned. Both paths end in the same clean, ATS-friendly preview and PDF.
+    </p>
+
+    {% if saved_resume %}
+      <div class="saved-banner" style="margin-top:1.4rem;">
+        <p>
+          <strong>Saved resume:</strong> {{ saved_resume.personal.full_name or 'Untitled resume' }}
+          {% if saved_resume.personal.email %} · {{ saved_resume.personal.email }}{% endif %}
+          {% if saved_resume.source == 'uploaded' %} · updated from an upload{% endif %}
+        </p>
+        <div class="actions">
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('resume_preview') }}">Preview</a>
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('ats_page') }}">Check ATS</a>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('resume_edit') }}">Continue editing</a>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="option-grid">
+      <article class="option-card accent">
+        <span class="pill pill-brand option-tag">Option 1 · Start fresh</span>
+        <h3>Create a New Resume</h3>
+        <p>Build your first resume with a structured form that covers everything a recruiter expects — and nothing you have to invent.</p>
+        <ul>
+          <li>Personal details, photo and professional links</li>
+          <li>AI-assisted career objective (fully editable)</li>
+          <li>Multiple education, project and certification entries</li>
+          <li>Experience, fresher or skip — your choice</li>
+          <li>Three professional templates with PDF export</li>
+        </ul>
+        <a class="btn btn-primary" href="{{ url_for('resume_new') }}">Create new resume</a>
+      </article>
+
+      <article class="option-card">
+        <span class="pill option-tag">Option 2 · Keep what works</span>
+        <h3>Upload and Edit Existing Resume</h3>
+        <p>Upload your current resume, review the extracted sections in editable fields, then add new certifications, projects or skills.</p>
+        <form action="{{ url_for('resume_upload') }}" method="post" enctype="multipart/form-data" class="stack-sm">
+          <div class="upload-box">
+            <label class="field-label" for="resume_file">Choose your resume file</label>
+            <input class="input" type="file" id="resume_file" name="resume_file" accept=".pdf,.docx" required>
+            <p class="field-help">PDF or DOCX · up to {{ max_upload_mb }} MB. Your original file is preserved untouched.</p>
+          </div>
+          <button class="btn btn-secondary" type="submit">Upload and edit resume</button>
+        </form>
+        <ul style="margin-top:1rem;">
+          <li>Actual text extraction — never just a picture of your PDF</li>
+          <li>Sections detected and placed into editable fields</li>
+          <li>Manual correction whenever detection is imperfect</li>
+          <li>Scanned PDFs get a clear OCR-unavailable explanation</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="assurance">
+      <span>Files stay on this machine</span>
+      <span>Originals are never overwritten</span>
+      <span>Freshers never need fake experience</span>
+      <span>No invented ATS score</span>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:2rem;">
+  <div class="container">
+    <div class="option-extra">
+      <article class="mini-card">
+        <span class="eyebrow amber" style="align-self:flex-start;">Already have a resume?</span>
+        <h3>ATS Resume Analyzer</h3>
+        <p>Analyze your generated, uploaded or updated resume against ten weighted categories and get specific fixes.</p>
+        <a href="{{ url_for('ats_page') }}">Open the ATS analyser →</a>
+      </article>
+      <article class="mini-card">
+        <span class="eyebrow mint" style="align-self:flex-start;">Not sure which role?</span>
+        <h3>CareerGuide</h3>
+        <p>Discover careers that fit your skills and interests, then see the learning roadmap for the gaps.</p>
+        <a href="{{ url_for('career_home') }}">Explore career options →</a>
+      </article>
+    </div>
+  </div>
+</section>
+{% endblock %}

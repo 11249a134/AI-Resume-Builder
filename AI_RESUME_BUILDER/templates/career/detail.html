@@ -1,0 +1,223 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ career.name }} career profile · CareerGuide{% endblock %}
+{% block meta_description %}{{ career.description }}{% endblock %}
+{% block body_class %}career-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/career.css') }}">{% endblock %}
+
+{% block content %}
+{% include "career/_subnav.html" %}
+
+<section class="detail-page">
+  <div class="container">
+    <div class="detail-hero">
+      <div class="detail-hero-grid">
+        <div>
+          <div class="cg-nav-actions" style="margin:0 0 .8rem;">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('career_recommendation') }}">← Back to recommendations</a>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('career_home') }}#guidance">Career form</a>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('home') }}">Homepage</a>
+          </div>
+          <span class="eyebrow mint">{{ career.category }}</span>
+          <h1>{{ career.name }}</h1>
+          <p class="rec-desc">{{ career.description }}</p>
+          <div class="rec-meta">
+            <span class="pill pill-mint">{{ match.match }}% match for you</span>
+            <span class="pill pill-brand">Skills {{ match.skills_percent }}%</span>
+            <span class="pill">Interests {{ match.interests_percent }}% ({{ match.interest_compatibility }})</span>
+          </div>
+        </div>
+        <div class="match-ring" style="--value: {{ match.match }};" role="img" aria-label="{{ match.match }} percent personal match">
+          <div class="match-ring-inner"><strong>{{ match.match }}%</strong><span>your match</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-layout">
+      <div class="detail-main">
+        <section class="detail-section">
+          <h2>Career match analysis</h2>
+          <div class="analysis-grid" style="margin-top:0;">
+            <div class="analysis-card">
+              <h3>Skill compatibility</h3>
+              <div class="metric"><strong>{{ match.skills_percent }}%</strong><span>{{ match.matched_skills|length }} of {{ match.required_skill_count }} required skills</span></div>
+              <div class="progress mint"><span style="width: {{ match.skills_percent }}%;"></span></div>
+              <h3 style="margin-top:1rem;">Skills you already have</h3>
+              <div class="chip-cloud">
+                {% for skill in existing_skills %}<span class="pill pill-mint">{{ skill }}</span>{% else %}<span class="small muted">None of the core required skills are on your profile yet.</span>{% endfor %}
+              </div>
+              <h3 style="margin-top:1rem;">Skills to learn</h3>
+              <div class="chip-cloud">
+                {% for skill in skills_to_learn[:10] %}<span class="pill">{{ skill }}</span>{% else %}<span class="small muted">You already cover this career's required skills.</span>{% endfor %}
+              </div>
+            </div>
+            <div class="analysis-card">
+              <h3>Interest compatibility</h3>
+              <div class="metric"><strong>{{ match.interests_percent }}%</strong><span>{{ match.matched_interests|length }} of {{ match.required_interest_count }} related interests</span></div>
+              <div class="progress"><span style="width: {{ match.interests_percent }}%;"></span></div>
+              <h3 style="margin-top:1rem;">Your matching interests</h3>
+              <div class="chip-cloud">
+                {% for interest in match.matched_interests %}<span class="pill pill-brand">{{ interest }}</span>{% else %}<span class="small muted">Your interests did not overlap with this field.</span>{% endfor %}
+              </div>
+              <h3 style="margin-top:1rem;">Related interests in this field</h3>
+              <ul class="small muted">
+                {% for interest in career.interests %}<li>{{ interest }}</li>{% endfor %}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="detail-section">
+          <h2>Career overview</h2>
+          <p>{{ career.description }}</p>
+          <h3>Typical responsibilities</h3>
+          <ul>
+            {% for item in career.responsibilities %}<li>{{ item }}</li>{% endfor %}
+          </ul>
+        </section>
+
+        <section class="detail-section">
+          <h2>Required skills</h2>
+          <div class="skill-columns">
+            <div>
+              <h4>Technical skills</h4>
+              <div class="chip-cloud">
+                {% for skill in career.technical_skills %}<span class="pill {% if skill in existing_skills %}pill-mint{% endif %}">{{ skill }}</span>{% endfor %}
+              </div>
+            </div>
+            <div>
+              <h4>Soft skills</h4>
+              <div class="chip-cloud">
+                {% for skill in career.soft_skills %}<span class="pill {% if skill in existing_skills %}pill-mint{% endif %}">{{ skill }}</span>{% endfor %}
+              </div>
+            </div>
+          </div>
+          <p class="small muted" style="margin:.8rem 0 0;">Highlighted skills are already on your profile.</p>
+          <h3>Educational requirements</h3>
+          <ul>{% for item in career.education %}<li>{{ item }}</li>{% endfor %}</ul>
+        </section>
+
+        <section class="detail-section">
+          <h2>Suggested projects</h2>
+          <div class="project-list">
+            {% for project in career.projects %}
+              <article class="project-item">
+                <div class="split" style="align-items:flex-start;">
+                  <h4>{{ project.title }}</h4>
+                  <span class="pill {% if project.level == 'beginner' %}pill-mint{% elif project.level == 'advanced' %}pill-brand{% else %}pill-amber{% endif %}">{{ project.level|capitalize }}</span>
+                </div>
+                <p>{{ project.description }}</p>
+              </article>
+            {% endfor %}
+          </div>
+          <h3>Relevant certifications</h3>
+          <ul>{% for cert in career.certifications %}<li>{{ cert }}</li>{% endfor %}</ul>
+        </section>
+
+        <section class="detail-section">
+          <h2>Career growth opportunities</h2>
+          <ul>{% for item in career.growth %}<li>{{ item }}</li>{% endfor %}</ul>
+        </section>
+
+        <section class="detail-section">
+          <h2>Personalized learning roadmap</h2>
+          <p class="small muted">Structured around the skills you are missing, with a project at every level.</p>
+          <div class="roadmap">
+            {% for level in roadmap %}
+              <article class="roadmap-level level-{{ level.key }}">
+                <h3>{{ level.label }}</h3>
+                <p class="level-sub">{{ level.summary }}</p>
+                {% if level.focus_skills %}
+                  <div class="chip-cloud" style="margin-bottom:.6rem;">
+                    {% for skill in level.focus_skills %}<span class="pill">{{ skill }}</span>{% endfor %}
+                  </div>
+                {% endif %}
+                <div class="roadmap-columns">
+                  <div>
+                    <h4>Topics to learn</h4>
+                    <ul>{% for topic in level.topics %}<li>{{ topic }}</li>{% endfor %}</ul>
+                  </div>
+                  <div>
+                    <h4>Projects to build</h4>
+                    <ul>
+                      {% for project in level.projects %}<li><strong>{{ project.title }}</strong> — {{ project.description }}</li>{% else %}<li>Apply this level in one documented mini-project.</li>{% endfor %}
+                    </ul>
+                  </div>
+                </div>
+                {% if level.resources %}
+                  <div class="level-resources">
+                    {% for resource in level.resources %}
+                      <a class="pill pill-mint" href="{{ resource.url }}" target="_blank" rel="noopener noreferrer">{{ resource.title }} ↗{% if resource.cost %} <span class="res-cost">· {{ resource.cost }}</span>{% endif %}</a>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="detail-section">
+          <h2>Recommended learning resources</h2>
+          <p class="small muted">Chosen for the missing skills in this career, plus the core resources for the field. Every link is clickable and opens the provider's site.</p>
+          <div class="resource-grid">
+            {% for resource in resources %}
+              <article class="resource-card">
+                <div class="resource-head">
+                  <h3>{{ resource.title }}</h3>
+                  <span class="pill {% if 'Free' in resource.cost %}pill-mint{% else %}pill-amber{% endif %}">{{ resource.cost }}</span>
+                </div>
+                <p class="resource-desc">{{ resource.description }}</p>
+                <div class="resource-meta">
+                  <span class="pill">{{ resource.provider }}</span>
+                  <span class="pill">{{ resource.level }}</span>
+                </div>
+                {% if resource.why %}<p class="small muted" style="margin:0 0 .6rem;">{{ resource.why }}</p>{% endif %}
+                <a class="btn btn-secondary btn-sm" href="{{ resource.url }}" target="_blank" rel="noopener noreferrer">Visit learning resource ↗</a>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+
+      <aside class="detail-side">
+        <div class="aside-card">
+          <h3>Your profile</h3>
+          <p class="small" style="margin-bottom:.3rem;"><strong>{{ profile.name }}</strong></p>
+          <p class="small muted" style="margin-bottom:.6rem;">{{ profile.degree }} · {{ profile.qualification }}</p>
+          <h4 style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Your skills</h4>
+          <div class="chip-cloud">
+            {% for skill in profile.skills %}<span class="pill">{{ skill }}</span>{% else %}<span class="small muted">No skills listed.</span>{% endfor %}
+          </div>
+          <a class="btn btn-secondary btn-sm" style="margin-top:.8rem;" href="{{ url_for('career_home') }}#guidance">Update my details</a>
+        </div>
+
+        <div class="aside-card">
+          <h3>Other strong matches</h3>
+          {% for other in others %}
+            <a class="rec-mini" href="{{ url_for('career_detail', career_id=other.id) }}">
+              <strong>{{ other.name }}</strong>
+              <span>{{ other.match }}% match · {{ other.category }}</span>
+            </a>
+          {% else %}
+            <p class="small muted">No other recommendations available.</p>
+          {% endfor %}
+          <a class="btn btn-ghost btn-sm btn-block" href="{{ url_for('career_recommendation') }}">All recommendations</a>
+        </div>
+
+        <div class="aside-card">
+          <h3>Next actions</h3>
+          <a class="btn btn-primary btn-sm btn-block" href="{{ url_for('resume_entry') }}">Build a resume for this role</a>
+          <a class="btn btn-secondary btn-sm btn-block" style="margin-top:.5rem;" href="{{ url_for('ats_page') }}">Check my resume ATS score</a>
+          <p class="small muted" style="margin:.7rem 0 0;">Add the skills above to your resume only once you have genuinely started learning them.</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="cg-nav-actions">
+      <a class="btn btn-secondary" href="{{ url_for('career_recommendation') }}">← Back to recommendations</a>
+      <a class="btn btn-secondary" href="{{ url_for('career_home') }}#guidance">Back to Career Form</a>
+      <a class="btn btn-secondary" href="{{ url_for('home') }}">Back to Homepage</a>
+      <a class="btn btn-ghost" href="{{ url_for('career_home') }}#careers">Explore another career</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

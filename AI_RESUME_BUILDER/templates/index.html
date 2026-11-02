@@ -1,0 +1,175 @@
+{% extends "shared/base.html" %}
+{% block title %}AI Resume Builder &amp; Career Recommendation System{% endblock %}
+{% block body_class %}home-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    {% if saved_resume and saved_resume.personal.full_name %}
+      <div class="saved-banner">
+        <p><strong>Welcome back, {{ saved_resume.personal.full_name.split()[0] }}.</strong> You have a saved resume — pick up where you left off.</p>
+        <div class="actions">
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('resume_preview') }}">View resume</a>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('resume_edit') }}">Continue editing</a>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow">AI-powered career workspace · 2026</span>
+        <h1>Build Your Future. <span class="accent">One Resume at a Time.</span></h1>
+        <p class="lede">
+          Create professional resumes, analyze your ATS compatibility, and discover career
+          opportunities with personalized AI-powered guidance.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="{{ url_for('resume_entry') }}">Build your resume</a>
+          <a class="btn btn-secondary btn-lg" href="{{ url_for('career_home') }}">Explore careers</a>
+        </div>
+        <div class="hero-meta">
+          <div><strong>{{ career_count }}</strong><span>career profiles</span></div>
+          <div><strong>3</strong><span>resume templates</span></div>
+          <div><strong>10</strong><span>ATS scoring categories</span></div>
+          <div><strong>0</strong><span>invented scores</span></div>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="badge-float ats"><span class="dot"></span><span><strong>ATS 86/100</strong><small>rule-based estimate</small></span></div>
+        <div class="mock-resume">
+          <div class="mock-head">
+            <div>
+              <h4>Aarav Sharma</h4>
+              <p>Data Analyst · Bengaluru, India</p>
+            </div>
+            <div class="mock-avatar">AS</div>
+          </div>
+          <div class="mock-block">
+            <small>CAREER OBJECTIVE</small>
+            <div class="mock-line"></div>
+            <div class="mock-line w80"></div>
+            <div class="mock-line w60"></div>
+          </div>
+          <div class="mock-block">
+            <small>SKILLS</small>
+            <div class="mock-chips">
+              <span>SQL</span><span>Python</span><span>Power BI</span><span>Statistics</span><span>Excel</span>
+            </div>
+          </div>
+          <div class="mock-block">
+            <small>PROJECTS</small>
+            <div class="mock-line w80"></div>
+            <div class="mock-line w60"></div>
+            <div class="mock-line w45"></div>
+          </div>
+        </div>
+        <div class="badge-float match"><span class="dot"></span><span><strong>92% match</strong><small>Data Analyst</small></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section module-section">
+  <div class="container">
+    <div class="section-head center">
+      <span class="eyebrow">Two modules · one workspace</span>
+      <h2>Everything you need, from first draft to career plan</h2>
+      <p class="lede">The resume module gets you interview-ready. CareerGuide tells you which direction to grow — and exactly what to learn next.</p>
+    </div>
+
+    <div class="module-cards">
+      <article class="module-card">
+        <div class="module-icon" aria-hidden="true">▤</div>
+        <h3>Module 1 · AI Resume Builder</h3>
+        <p>Create professional resumes, upload existing resumes, make updates, and improve your ATS compatibility.</p>
+        <ul class="module-features">
+          <li>Create a new resume with a guided, structured form</li>
+          <li>Upload a PDF or DOCX resume and edit the extracted content</li>
+          <li>ATS Resume Analyzer with a transparent 100-point score</li>
+          <li>Three professional templates with clean PDF export</li>
+        </ul>
+        <a class="btn btn-primary" href="{{ url_for('resume_entry') }}">Build your resume</a>
+      </article>
+
+      <article class="module-card career">
+        <div class="module-icon" aria-hidden="true">◈</div>
+        <h3>Module 2 · CareerGuide</h3>
+        <p>Discover suitable career paths, identify skill gaps, and explore personalized learning roadmaps.</p>
+        <ul class="module-features">
+          <li>Career guidance form matched on skills and interests</li>
+          <li>Top five career matches with honest percentages</li>
+          <li>Beginner → intermediate → advanced learning roadmap</li>
+          <li>Clickable resources from official and trusted providers</li>
+        </ul>
+        <a class="btn btn-mint" href="{{ url_for('career_home') }}">Explore careers</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top: 0;">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow mint">How it works</span>
+      <h2>Three steps to a stronger application</h2>
+    </div>
+    <div class="steps">
+      <article class="step-card">
+        <div class="step-index">01</div>
+        <h3>Build or upload</h3>
+        <p>Fill the guided form, or upload the resume you already have and correct the extracted sections — no retyping from scratch.</p>
+      </article>
+      <article class="step-card">
+        <div class="step-index">02</div>
+        <h3>Score and fix</h3>
+        <p>Run the ATS analyser. See exactly which points were earned, which were lost and what to change — then regenerate.</p>
+      </article>
+      <article class="step-card">
+        <div class="step-index">03</div>
+        <h3>Choose a direction</h3>
+        <p>Take your skills and interests to CareerGuide for ranked career matches, skill gaps and a staged learning roadmap.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top: 0;">
+  <div class="container trust-grid">
+    <div>
+      <span class="eyebrow mint">Built on transparent logic</span>
+      <h2>No fake ATS scores. No random career picks.</h2>
+      <p>Every score in this application comes from a documented rule set you can inspect, and every career match follows one fixed formula. If the AI service is unavailable, the same features keep working with rule-based logic — and the interface tells you which engine produced the result.</p>
+      <ul class="trust-list">
+        <li>ATS score = ten weighted category checks, adding to exactly 100 points</li>
+        <li>Career match = skills × 0.60 + interests × 0.40, with synonym-aware matching</li>
+        <li>Freshers are never forced to invent work experience</li>
+        <li>Uploaded originals are preserved; nothing is silently overwritten</li>
+      </ul>
+      <p style="margin-top:1.2rem;"><a class="btn btn-secondary" href="{{ url_for('ats_page') }}#scoring">See the ATS scoring method</a></p>
+    </div>
+    <div class="trust-panel">
+      <span class="eyebrow" style="background: rgba(165,180,252,.14); color:#c7d2fe;">Career library</span>
+      <h2>40 careers across 6 domains</h2>
+      <p>AI &amp; data science, software, security &amp; cloud, design, business, and engineering or education.</p>
+      <div class="mini-careers">
+        {% for career in top_careers %}
+          <a href="{{ url_for('career_home') }}#careers">{{ career.name }}</a>
+        {% endfor %}
+      </div>
+      <p style="margin-top:1.2rem;"><a class="btn btn-primary btn-sm" href="{{ url_for('career_home') }}">Open CareerGuide</a></p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="cta-band">
+      <div>
+        <h2>Your next opportunity starts with a clearer resume.</h2>
+        <p>Build it in minutes, check it honestly, and aim it at a career that fits your skills.</p>
+      </div>
+      <a class="btn btn-lg" href="{{ url_for('resume_entry') }}">Start now — it's free</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

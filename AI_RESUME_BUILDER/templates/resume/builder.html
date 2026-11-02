@@ -1,0 +1,488 @@
+{% extends "shared/base.html" %}
+{% block title %}{% if mode == 'edit' %}Edit resume{% else %}Create a new resume{% endif %} · {{ site_name }}{% endblock %}
+{% block body_class %}resume-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/resume.css') }}">{% endblock %}
+{% set photo_url = url_for('resume_photo', resume_id=resume.id) if resume.personal.photo else '' %}
+
+{% macro education_row(entry) %}
+  <div class="repeat-row" data-row>
+    <div class="repeat-row-head">
+      <span>Education entry</span>
+      <button type="button" class="remove-row" data-remove-row>Remove</button>
+    </div>
+    <div class="form-grid">
+      <div class="field span-2">
+        <label>Institution name</label>
+        <input class="input" type="text" name="edu_institution" value="{{ entry.institution or '' }}" placeholder="e.g. ABC Institute of Technology" maxlength="140">
+      </div>
+      <div class="field">
+        <label>Degree</label>
+        <input class="input" type="text" name="edu_degree" value="{{ entry.degree or '' }}" placeholder="e.g. B.Tech" maxlength="120">
+      </div>
+      <div class="field">
+        <label>Department / specialisation</label>
+        <input class="input" type="text" name="edu_department" value="{{ entry.department or '' }}" placeholder="e.g. Artificial Intelligence &amp; Data Science" maxlength="120">
+      </div>
+      <div class="field">
+        <label>Starting year</label>
+        <input class="input" type="text" name="edu_start_year" value="{{ entry.start_year or '' }}" placeholder="2022" maxlength="12" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>Graduation year</label>
+        <input class="input" type="text" name="edu_grad_year" value="{{ entry.grad_year or '' }}" placeholder="2026" maxlength="12" inputmode="numeric">
+      </div>
+      <div class="field span-2">
+        <label>CGPA / percentage <span class="optional">(optional but recommended)</span></label>
+        <input class="input" type="text" name="edu_score" value="{{ entry.score or '' }}" placeholder="e.g. 8.6 CGPA or 84%" maxlength="40">
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro project_row(project) %}
+  <div class="repeat-row" data-row>
+    <div class="repeat-row-head">
+      <span>Project</span>
+      <button type="button" class="remove-row" data-remove-row>Remove</button>
+    </div>
+    <div class="form-grid">
+      <div class="field span-2">
+        <label>Project title</label>
+        <input class="input" type="text" name="project_title" value="{{ project.title or '' }}" placeholder="e.g. Sales performance dashboard" maxlength="120">
+      </div>
+      <div class="field span-2">
+        <label>Description</label>
+        <textarea class="textarea" name="project_description" rows="3" maxlength="900" placeholder="What problem did it solve, what did you build, and what was the result?">{{ project.description or '' }}</textarea>
+        <p class="field-help">Two or three bullets or sentences work best. Lead with action verbs and one measurable outcome.</p>
+      </div>
+      <div class="field">
+        <label>Technologies used</label>
+        <input class="input" type="text" name="project_technologies" value="{{ project.technologies or '' }}" placeholder="Python, Flask, SQL, Power BI" maxlength="200">
+      </div>
+      <div class="field">
+        <label>Project URL <span class="optional">(optional)</span></label>
+        <input class="input" type="url" name="project_url" value="{{ project.url or '' }}" placeholder="https://github.com/you/project" maxlength="300">
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro certification_row(cert, index) %}
+  <div class="repeat-row" data-row data-cert-row>
+    <div class="repeat-row-head">
+      <span>Certification</span>
+      <button type="button" class="remove-row" data-remove-row>Remove</button>
+    </div>
+    <div class="form-grid">
+      <div class="field span-2">
+        <label>Certification name</label>
+        <input class="input" type="text" name="cert_name" value="{{ cert.name or '' }}" placeholder="e.g. Google Data Analytics Professional Certificate" maxlength="140">
+      </div>
+      <div class="field">
+        <label>Issuing organisation</label>
+        <input class="input" type="text" name="cert_org" value="{{ cert.organization or '' }}" placeholder="e.g. Google / Coursera" maxlength="120">
+      </div>
+      <div class="field">
+        <label>Issue date</label>
+        <input class="input" type="text" name="cert_date" value="{{ cert.issue_date or '' }}" placeholder="e.g. Jun 2025" maxlength="40">
+      </div>
+      <div class="field">
+        <label>Credential ID <span class="optional">(optional)</span></label>
+        <input class="input" type="text" name="cert_id" value="{{ cert.credential_id or '' }}" placeholder="e.g. ABC-123456" maxlength="80">
+      </div>
+      <div class="field">
+        <label>Certificate URL <span class="optional">(optional)</span></label>
+        <input class="input" type="url" name="cert_url" value="{{ cert.url or '' }}" placeholder="https://..." maxlength="300">
+      </div>
+      <div class="field span-2">
+        <label>Supporting document <span class="optional">(PDF, JPG or PNG — stored, never inserted into the resume)</span></label>
+        <input class="input" type="file" name="cert_file_{{ index }}" accept=".pdf,.jpg,.jpeg,.png">
+        {% if cert.attachment %}
+          <p class="field-help">
+            Attached: {{ cert.attachment }}
+            {% if cert.attachment_path %}
+              · <a href="{{ url_for('resume_certificate', resume_id=resume.id, index=index) }}" target="_blank" rel="noopener noreferrer">view file</a>
+            {% endif %}
+            · <label class="check" style="display:inline-flex;"><input type="checkbox" name="cert_remove_attachment_{{ index }}" value="1"> remove</label>
+          </p>
+          <input type="hidden" name="cert_attachment" value="{{ cert.attachment }}">
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro experience_row(job) %}
+  <div class="repeat-row" data-row>
+    <div class="repeat-row-head">
+      <span>Experience</span>
+      <button type="button" class="remove-row" data-remove-row>Remove</button>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Company name</label>
+        <input class="input" type="text" name="exp_company" value="{{ job.company or '' }}" placeholder="e.g. Acme Analytics" maxlength="120">
+      </div>
+      <div class="field">
+        <label>Job title</label>
+        <input class="input" type="text" name="exp_title" value="{{ job.title or '' }}" placeholder="e.g. Data Analyst Intern" maxlength="120">
+      </div>
+      <div class="field span-2">
+        <label>Employment duration</label>
+        <input class="input" type="text" name="exp_duration" value="{{ job.duration or '' }}" placeholder="e.g. Jun 2024 – Aug 2024" maxlength="60">
+      </div>
+      <div class="field span-2">
+        <label>Responsibilities</label>
+        <textarea class="textarea" name="exp_responsibilities" rows="3" maxlength="900" placeholder="One responsibility per line. Start each line with an action verb.">{{ job.responsibilities or '' }}</textarea>
+      </div>
+      <div class="field span-2">
+        <label>Achievements</label>
+        <textarea class="textarea" name="exp_achievements" rows="2" maxlength="600" placeholder="Measurable outcomes, one per line.">{{ job.achievements or '' }}</textarea>
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<section class="builder-main">
+  <div class="container">
+    <div class="builder-top">
+      <div>
+        <span class="eyebrow">{% if mode == 'edit' %}Editing your resume{% else %}New resume{% endif %}</span>
+        <h1>{% if mode == 'edit' %}Edit your resume{% else %}Build your resume{% endif %}</h1>
+        <p>Everything is editable. Your data is saved only on this machine, and you can regenerate at any time.</p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('resume_entry') }}">← Back</a>
+        {% if saved_resume_id %}
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('resume_preview') }}">Preview saved</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if resume.extraction and resume.extraction.warnings %}
+      <div class="callout warning extraction-banner">
+        <strong>Uploaded resume detected — please review the extracted fields.</strong>
+        <ul style="margin:.5rem 0 0;padding-left:1.1rem;font-size:.86rem;">
+          {% for warning in resume.extraction.warnings %}<li>{{ warning }}</li>{% endfor %}
+        </ul>
+        {% if resume.original_file %}
+          <details>
+            <summary>Original file details</summary>
+            <p style="margin:.4rem 0 0;">
+              <strong>{{ resume.original_file.name }}</strong> was preserved untouched.
+              {% if resume.original_file.path %}
+                <a href="{{ url_for('resume_original', resume_id=resume.id) }}">Download original</a>.
+              {% endif %}
+            </p>
+          </details>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if errors %}
+      <div class="callout warning" style="border-color:#be123c;background:#fff1f2;margin-bottom:1.4rem;">
+        <strong>Please fix these before generating:</strong>
+        <ul style="margin:.4rem 0 0;padding-left:1.1rem;font-size:.88rem;">
+          {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="builder-layout">
+      <form class="builder-form-card" id="resume-form" action="{{ url_for('resume_generate') }}" method="post" enctype="multipart/form-data" data-ai-endpoint="{{ url_for('api_objective') }}">
+        <input type="hidden" name="resume_id" value="{{ resume.id }}">
+        <input type="hidden" name="max_upload_bytes" value="{{ max_upload_mb * 1024 * 1024 }}">
+        <input type="hidden" name="max_photo_bytes" value="{{ 4 * 1024 * 1024 }}">
+
+        <!-- 1. Personal information -->
+        <section class="form-section" id="personal">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">1</span> Personal information</h3>
+              <p>How employers reach you. Email is required; links and photo are optional.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="full_name">Full name <span aria-hidden="true" style="color:#be123c;">*</span></label>
+              <input class="input" id="full_name" type="text" name="full_name" value="{{ resume.personal.full_name or '' }}" placeholder="e.g. Aarav Sharma" maxlength="90" required autocomplete="name">
+            </div>
+            <div class="field">
+              <label for="email">Email address <span aria-hidden="true" style="color:#be123c;">*</span></label>
+              <input class="input" id="email" type="email" name="email" value="{{ resume.personal.email or '' }}" placeholder="you@example.com" maxlength="120" required autocomplete="email">
+            </div>
+            <div class="field">
+              <label for="phone">Phone number</label>
+              <input class="input" id="phone" type="tel" name="phone" value="{{ resume.personal.phone or '' }}" placeholder="+91 98765 43210" maxlength="40" autocomplete="tel">
+            </div>
+            <div class="field">
+              <label for="location">Location</label>
+              <input class="input" id="location" type="text" name="location" value="{{ resume.personal.location or '' }}" placeholder="Bengaluru, Karnataka, India" maxlength="120" autocomplete="address-level2">
+            </div>
+            <div class="field">
+              <label for="linkedin">LinkedIn profile <span class="optional">(optional)</span></label>
+              <input class="input" id="linkedin" type="text" name="linkedin" value="{{ resume.personal.linkedin or '' }}" placeholder="linkedin.com/in/yourname" maxlength="300">
+            </div>
+            <div class="field">
+              <label for="github">GitHub profile <span class="optional">(optional)</span></label>
+              <input class="input" id="github" type="text" name="github" value="{{ resume.personal.github or '' }}" placeholder="github.com/yourname" maxlength="300">
+            </div>
+            <div class="field span-2">
+              <label for="portfolio">Portfolio website <span class="optional">(optional)</span></label>
+              <input class="input" id="portfolio" type="text" name="portfolio" value="{{ resume.personal.portfolio or '' }}" placeholder="yourname.dev" maxlength="300">
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field-label">Profile photograph <span class="optional">(optional · JPG or PNG · top-right of the resume)</span></span>
+            <div class="photo-row">
+              <div class="photo-preview" id="photo-preview" aria-live="polite">
+                {% if photo_url %}<img src="{{ photo_url }}?v={{ resume.updated_at }}" alt="Current profile photo">{% else %}No photo{% endif %}
+              </div>
+              <div class="photo-controls">
+                <input class="input" type="file" name="photo" id="photo-input" accept=".jpg,.jpeg,.png">
+                <p class="field-help">A square-ish photo works best. It is resized automatically and never affects ATS text parsing.</p>
+                {% if resume.personal.photo %}
+                  <label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove the current photo</label>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Career objective -->
+        <section class="form-section" id="objective">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">2</span> Career objective</h3>
+              <p>Two or three sentences describing the role you want and the value you bring.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field span-2">
+              <label for="target_role">Target role <span class="optional">(optional — improves ATS keyword matching)</span></label>
+              <input class="input" id="target_role" type="text" name="target_role" value="{{ resume.target_role or '' }}" placeholder="e.g. Data Analyst" maxlength="90" list="career-role-list">
+              <datalist id="career-role-list">
+                {% for choice in career_choices %}<option value="{{ choice.name }}"></option>{% endfor %}
+              </datalist>
+            </div>
+            <div class="field span-2">
+              <label for="objective">Career objective</label>
+              <textarea class="textarea" id="objective" name="objective" rows="4" maxlength="1200" placeholder="Final-year B.Tech (AI &amp; Data Science) student with hands-on experience in Python, SQL and Power BI, seeking a Data Analyst role…">{{ resume.objective or '' }}</textarea>
+              <p class="field-help"><span id="objective-count">0</span> words. Aim for 45–70 words.</p>
+            </div>
+          </div>
+          <div class="ai-box">
+            <div class="ai-box-head">
+              <h4>✦ AI objective assistant</h4>
+              <div class="actions">
+                <button class="btn btn-secondary btn-sm" type="button" id="ai-generate" data-ai-mode="generate">Generate objective</button>
+                <button class="btn btn-ghost btn-sm" type="button" id="ai-improve" data-ai-mode="improve">Improve what I wrote</button>
+              </div>
+            </div>
+            <p class="field-help" style="margin:0;">Uses your education, skills and target role. Generated text lands in the textarea above and stays fully editable.</p>
+            <p class="ai-status" id="ai-status">
+              {% if ai_status.available %}
+                OpenAI is configured — generation will use {{ ai_status.model }}.
+              {% else %}
+                AI service not configured: the transparent rule-based writer will be used and labelled as such.
+              {% endif %}
+            </p>
+          </div>
+        </section>
+
+        <!-- 3. Education -->
+        <section class="form-section" id="education">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">3</span> Education</h3>
+              <p>Most recent first. Multiple entries are supported.</p>
+            </div>
+          </div>
+          <div class="repeat-list" id="education-list">
+            {% for entry in (resume.education or [{}]) %}{{ education_row(entry) }}{% endfor %}
+          </div>
+          <button class="add-row" type="button" data-add-row="education-list" data-template="tpl-education">+ Add another education</button>
+        </section>
+
+        <!-- 4. Skills -->
+        <section class="form-section" id="skills">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">4</span> Skills</h3>
+              <p>Add technical and professional skills. Press Enter or comma after each one.</p>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Technical skills</span>
+            <div class="chip-field" data-chip-field>
+              <div class="chip-list" data-chip-list>
+                {% for skill in resume.skills.technical %}
+                  <span class="chip">{{ skill }}<button type="button" data-chip-remove aria-label="Remove {{ skill }}">×</button></span>
+                {% endfor %}
+              </div>
+              <input class="chip-input" type="text" placeholder="e.g. Python, SQL, Machine Learning" data-chip-input aria-label="Add technical skill">
+              <input type="hidden" name="skills_technical" value="{{ resume.skills.technical|join(', ') }}" data-chip-hidden>
+            </div>
+            <p class="chip-hint">Examples: Python, Java, SQL, Machine Learning, Data Analysis, HTML, CSS, JavaScript.</p>
+          </div>
+          <div class="field">
+            <span class="field-label">Soft / professional skills</span>
+            <div class="chip-field" data-chip-field>
+              <div class="chip-list" data-chip-list>
+                {% for skill in resume.skills.soft %}
+                  <span class="chip">{{ skill }}<button type="button" data-chip-remove aria-label="Remove {{ skill }}">×</button></span>
+                {% endfor %}
+              </div>
+              <input class="chip-input" type="text" placeholder="e.g. Communication, Problem Solving" data-chip-input aria-label="Add professional skill">
+              <input type="hidden" name="skills_soft" value="{{ resume.skills.soft|join(', ') }}" data-chip-hidden>
+            </div>
+            <p class="chip-hint">Examples: Communication, Teamwork, Problem Solving, Leadership, Time Management.</p>
+          </div>
+        </section>
+
+        <!-- 5. Projects -->
+        <section class="form-section" id="projects">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">5</span> Projects</h3>
+              <p>Your strongest evidence as a student. Add two if you can.</p>
+            </div>
+          </div>
+          <div class="repeat-list" id="projects-list">
+            {% for project in (resume.projects or [{}]) %}{{ project_row(project) }}{% endfor %}
+          </div>
+          <button class="add-row" type="button" data-add-row="projects-list" data-template="tpl-project">+ Add another project</button>
+        </section>
+
+        <!-- 6. Certifications -->
+        <section class="form-section" id="certifications">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">6</span> Certifications</h3>
+              <p>Add new certifications or keep the ones extracted from your uploaded resume.</p>
+            </div>
+          </div>
+          <div class="repeat-list" id="certifications-list">
+            {% for cert in (resume.certifications or [{}]) %}{{ certification_row(cert, loop.index0) }}{% endfor %}
+          </div>
+          <button class="add-row" type="button" data-add-row="certifications-list" data-template="tpl-certification">+ Add another certification</button>
+        </section>
+
+        <!-- 7. Experience -->
+        <section class="form-section" id="experience">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">7</span> Experience</h3>
+              <p>No experience? That is completely normal for a fresher — choose the honest option.</p>
+            </div>
+          </div>
+          <div class="radio-cards">
+            <label class="radio-card">
+              <input type="radio" name="experience_status" value="has" {% if resume.experience_status == 'has' %}checked{% endif %} data-experience-toggle>
+              <strong>Add experience</strong>
+              <span>Internships, part-time or full-time roles</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="experience_status" value="fresher" {% if resume.experience_status == 'fresher' %}checked{% endif %} data-experience-toggle>
+              <strong>I have no experience</strong>
+              <span>Fresher — resume generates normally</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="experience_status" value="skip" {% if resume.experience_status == 'skip' %}checked{% endif %} data-experience-toggle>
+              <strong>Skip this section</strong>
+              <span>Leave experience out entirely</span>
+            </label>
+          </div>
+          <div class="experience-panel" id="experience-panel" {% if resume.experience_status != 'has' %}hidden{% endif %}>
+            <div class="repeat-list" id="experience-list">
+              {% for job in (resume.experience or [{}]) %}{{ experience_row(job) }}{% endfor %}
+            </div>
+            <button class="add-row" type="button" data-add-row="experience-list" data-template="tpl-experience">+ Add another role</button>
+          </div>
+          <p class="row-empty-note" id="fresher-note" {% if resume.experience_status == 'has' %}hidden{% endif %}>
+            Your resume will skip the experience section and leave it out cleanly — no empty headings, no invented roles.
+          </p>
+        </section>
+
+        <!-- 8. Template -->
+        <section class="form-section" id="template">
+          <div class="form-section-head">
+            <div>
+              <h3><span class="step-num">8</span> Choose a template</h3>
+              <p>All three are single-column and ATS-friendly. You can change this later on the preview page.</p>
+            </div>
+          </div>
+          <div class="template-picker">
+            {% for tpl in templates_catalog %}
+              <label class="template-option">
+                <input type="radio" name="template" value="{{ tpl.id }}" {% if resume.template == tpl.id %}checked{% endif %}>
+                <span class="template-thumb" aria-hidden="true">
+                  <span class="tt-name" style="background: {{ tpl.accent }}55;"></span>
+                  <span class="tt-line"></span><span class="tt-line"></span><span class="tt-line short"></span>
+                  <span class="tt-line" style="margin-top:6px;"></span><span class="tt-line short"></span>
+                </span>
+                <strong>{{ tpl.name }}</strong>
+                <small>{{ tpl.tagline }}</small>
+              </label>
+            {% endfor %}
+          </div>
+        </section>
+
+        <div class="builder-actions">
+          <p class="note">By generating, you confirm the details are accurate. Generate as many times as you need — the previous version is replaced only when you submit.</p>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+            <a class="btn btn-ghost" href="{{ url_for('resume_entry') }}">Cancel</a>
+            <button class="btn btn-primary btn-lg" type="submit">Generate resume →</button>
+          </div>
+        </div>
+      </form>
+
+      <aside class="builder-aside">
+        <div class="aside-card">
+          <h3>Resume checklist</h3>
+          <ul class="aside-nav">
+            <li><a href="#personal"><span class="dot {% if resume.personal.full_name and resume.personal.email %}done{% endif %}" data-dot="personal"></span> Personal information <span class="count">1</span></a></li>
+            <li><a href="#objective"><span class="dot {% if resume.objective %}done{% endif %}" data-dot="objective"></span> Career objective <span class="count">2</span></a></li>
+            <li><a href="#education"><span class="dot {% if resume.education %}done{% endif %}" data-dot="education"></span> Education <span class="count">{{ resume.education|length }}</span></a></li>
+            <li><a href="#skills"><span class="dot {% if resume.skills.technical or resume.skills.soft %}done{% endif %}" data-dot="skills"></span> Skills <span class="count">{{ (resume.skills.technical|length) + (resume.skills.soft|length) }}</span></a></li>
+            <li><a href="#projects"><span class="dot {% if resume.projects %}done{% endif %}" data-dot="projects"></span> Projects <span class="count">{{ resume.projects|length }}</span></a></li>
+            <li><a href="#certifications"><span class="dot {% if resume.certifications %}done{% endif %}" data-dot="certifications"></span> Certifications <span class="count">{{ resume.certifications|length }}</span></a></li>
+            <li><a href="#experience"><span class="dot {% if resume.experience %}done{% endif %}" data-dot="experience"></span> Experience <span class="count">{{ resume.experience|length }}</span></a></li>
+          </ul>
+        </div>
+        <div class="aside-card">
+          <h3>Quick tips</h3>
+          <ul class="muted small" style="padding-left:1rem;margin:0;">
+            <li>Use the job title you are targeting — ATS filters search for it.</li>
+            <li>Write 2–4 bullets per project with one measurable result.</li>
+            <li>List only skills you can discuss in an interview.</li>
+            <li>Keep the resume to one page until you have real experience.</li>
+          </ul>
+        </div>
+        {% if resume.original_file %}
+          <div class="aside-card">
+            <h3>Original upload</h3>
+            <p class="small muted" style="margin-bottom:.5rem;">{{ resume.original_file.name }}</p>
+            {% if resume.original_file.path %}
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('resume_original', resume_id=resume.id) }}">Download original</a>
+            {% endif %}
+            <p class="small muted" style="margin:.6rem 0 0;">The original is never modified. Generating creates a new updated resume.</p>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+</section>
+
+<template id="tpl-education">{{ education_row({}) }}</template>
+<template id="tpl-project">{{ project_row({}) }}</template>
+<template id="tpl-certification">{{ certification_row({}, '__INDEX__') }}</template>
+<template id="tpl-experience">{{ experience_row({}) }}</template>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/chips.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/builder.js') }}" defer></script>
+{% endblock %}

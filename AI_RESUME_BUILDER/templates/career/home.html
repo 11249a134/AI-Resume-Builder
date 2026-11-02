@@ -1,0 +1,242 @@
+{% extends "shared/base.html" %}
+{% block title %}CareerGuide · Discover the career that's right for you{% endblock %}
+{% block meta_description %}Explore personalised career opportunities based on your education, skills and interests, with skill-gap analysis, learning roadmaps and clickable resources.{% endblock %}
+{% block body_class %}career-page{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/career.css') }}">{% endblock %}
+{% set p = profile or {} %}
+{% set has_profile = p.skills and p.qualification %}
+{% set skills_value = p.skills_text if p.skills_text is defined and p.skills_text else (p.skills|join(', ') if p.skills else '') %}
+{% set interests_value = p.interests_text if p.interests_text is defined and p.interests_text else (p.interests|join(', ') if p.interests else '') %}
+
+{% block content %}
+{% include "career/_subnav.html" %}
+
+<section class="cg-hero" id="home">
+  <div class="container cg-hero-grid">
+    <div>
+      <span class="eyebrow mint">CareerGuide · career guidance system</span>
+      <h1>Discover the Career That's Right for You</h1>
+      <p class="lede">
+        Explore personalized career opportunities based on your education, skills, and interests.
+        Identify your strengths, discover new possibilities, and build a roadmap towards your dream career.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-mint btn-lg" href="#guidance">Start Your Career Journey</a>
+        <a class="btn btn-secondary btn-lg" href="#guidance">Take the 2-minute form</a>
+      </div>
+      <div class="cg-stats">
+        <div><strong>{{ career_count }}</strong><span>career profiles</span></div>
+        <div><strong>{{ categories|length }}</strong><span>career domains</span></div>
+        <div><strong>3</strong><span>roadmap levels</span></div>
+        <div><strong>60/40</strong><span>skills / interests</span></div>
+      </div>
+    </div>
+
+    <aside class="match-formula" aria-label="How career matching works">
+      <span class="pill pill-mint">Rule-based, fully transparent</span>
+      <h2>How your match is calculated</h2>
+      <p class="formula">Career Match % = (Skills Match × 0.60) + (Interests Match × 0.40)</p>
+      <div class="weight-row">
+        <div class="split"><span>Skills match</span><strong>60%</strong></div>
+        <div class="progress mint"><span style="width:60%"></span></div>
+      </div>
+      <div class="weight-row">
+        <div class="split"><span>Interests match</span><strong>40%</strong></div>
+        <div class="progress"><span style="width:40%"></span></div>
+      </div>
+      <p class="small muted" style="margin:.8rem 0 0;">
+        Synonyms are normalised before matching — ML becomes Machine Learning, JS becomes JavaScript,
+        Data Analysis becomes Data Analytics. Duplicate skills are counted once, and low-information
+        profiles are labelled preliminary instead of being given a high score.
+      </p>
+      {% if has_profile %}
+        <a class="btn btn-secondary btn-sm" style="margin-top:.9rem;" href="{{ url_for('career_recommendation') }}">View my last recommendations</a>
+      {% endif %}
+    </aside>
+  </div>
+</section>
+
+<section class="section cg-form-section" id="guidance">
+  <div class="container">
+    <div class="section-head center">
+      <span class="eyebrow">Career guidance</span>
+      <h2>Tell Us About Yourself</h2>
+      <p class="lede">The more precise your skills and interests, the more useful the recommendation. Multiple skills and interests can be separated by commas.</p>
+    </div>
+
+    {% if errors %}
+      <div class="callout warning" style="max-width:860px;margin:0 auto 1.4rem;border-color:#be123c;background:#fff1f2;">
+        <strong>Please check the form:</strong>
+        <ul style="margin:.4rem 0 0;padding-left:1.1rem;">
+          {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form class="cg-form-card" action="{{ url_for('career_recommendation') }}" method="post" id="career-form">
+      <div class="form-grid">
+        <div class="field">
+          <label for="cg-name">Your name <span aria-hidden="true" style="color:#be123c;">*</span></label>
+          <input class="input" id="cg-name" type="text" name="name" value="{{ p.name or '' }}" placeholder="e.g. Ananya Rao" maxlength="80" required autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="cg-qualification">Educational qualification <span aria-hidden="true" style="color:#be123c;">*</span></label>
+          <select class="select" id="cg-qualification" name="qualification" required>
+            <option value="">Select your qualification</option>
+            {% for option in ["Undergraduate student", "Bachelor's graduate", "Postgraduate student", "Master's graduate", "PhD / research scholar", "Diploma", "12th / higher secondary", "10th / secondary"] %}
+              <option value="{{ option }}" {% if p.qualification == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="cg-degree">Degree / department <span aria-hidden="true" style="color:#be123c;">*</span></label>
+          <input class="input" id="cg-degree" type="text" name="degree" value="{{ p.degree or '' }}" placeholder="e.g. B.Tech, Artificial Intelligence &amp; Data Science" maxlength="120">
+        </div>
+        <div class="field">
+          <label for="cg-domain">Preferred career domain <span class="optional">(optional)</span></label>
+          <select class="select" id="cg-domain" name="preferred_domain">
+            <option value="">No preference</option>
+            {% for category in categories %}
+              <option value="{{ category }}" {% if p.preferred_domain == category %}selected{% endif %}>{{ category }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="cg-experience">Experience level <span class="optional">(optional)</span></label>
+          <select class="select" id="cg-experience" name="experience_level">
+            <option value="">Select experience level</option>
+            {% for option in ["Student / fresher", "0 – 1 years", "1 – 3 years", "3 – 5 years", "5+ years"] %}
+              <option value="{{ option }}" {% if p.experience_level == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">Your skills <span aria-hidden="true" style="color:#be123c;">*</span></span>
+          <div class="chip-field" data-chip-field>
+            <div class="chip-list" data-chip-list></div>
+            <input class="chip-input" type="text" placeholder="Type a skill, press Enter — e.g. Python" data-chip-input aria-label="Add a skill">
+            <input type="hidden" name="skills" value="{{ skills_value }}" data-chip-hidden>
+          </div>
+          <p class="chip-hint">Press Enter or comma after each skill. Keep adding as many as you are comfortable defending.</p>
+        </div>
+        <div class="field span-2">
+          <span class="field-label">Your interests <span aria-hidden="true" style="color:#be123c;">*</span></span>
+          <div class="chip-field" data-chip-field>
+            <div class="chip-list" data-chip-list></div>
+            <input class="chip-input" type="text" placeholder="Type an interest, press Enter — e.g. Machine Learning, Dashboard design" data-chip-input aria-label="Add an interest">
+            <input type="hidden" name="interests" value="{{ interests_value }}" data-chip-hidden>
+          </div>
+          <p class="chip-hint">What genuinely interests you? Try subject areas, problem types or kinds of work — not only technologies.</p>
+        </div>
+      </div>
+
+      <div class="cg-form-actions">
+        <p class="small muted">Your answers are processed with deterministic rules — no guesswork, no random matches. Nothing is uploaded anywhere.</p>
+        <button class="btn btn-mint btn-lg" type="submit">Analyze My Career</button>
+      </div>
+      <p class="field-error" id="cg-client-error" hidden></p>
+    </form>
+  </div>
+</section>
+
+<section class="section" id="features" style="padding-top:0;">
+  <div class="container">
+    <div class="section-head center">
+      <span class="eyebrow mint">What you get</span>
+      <h2>Four things CareerGuide does for you</h2>
+    </div>
+    <div class="cg-features">
+      <article class="cg-feature">
+        <span class="cg-feature-icon">◎</span>
+        <h3>Career Recommendation</h3>
+        <p>Ranked career options built from your own skills, interests and education — not a generic list of popular jobs.</p>
+      </article>
+      <article class="cg-feature">
+        <span class="cg-feature-icon">◐</span>
+        <h3>Career Match</h3>
+        <p>See the match percentage, matched skills, missing skills and interest compatibility for each role.</p>
+      </article>
+      <article class="cg-feature">
+        <span class="cg-feature-icon">▤</span>
+        <h3>Learning Roadmap</h3>
+        <p>A three-level plan — beginner, intermediate, advanced — with the projects that prove each level.</p>
+      </article>
+      <article class="cg-feature">
+        <span class="cg-feature-icon">↗</span>
+        <h3>Learning Resources</h3>
+        <p>Clickable, real learning links from official documentation and trusted platforms, mapped to your skill gaps.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section cg-library" id="careers" style="padding-top:0;">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow mint">Career library</span>
+      <h2>Explore the career profiles behind your results</h2>
+      <p class="lede">Every profile includes required skills, interests, projects, certifications, growth paths and learning resources.</p>
+    </div>
+    <div class="cg-library-grid">
+      {% for group in career_groups %}
+        <details class="library-group" {% if loop.index <= 2 %}open{% endif %}>
+          <summary><span>{{ group.category }}</span><span class="pill">{{ group.careers|length }}</span></summary>
+          <div class="library-pills">
+            {% for career in group.careers %}
+              {% if has_profile %}
+                <a class="pill" href="{{ url_for('career_detail', career_id=career.id) }}">{{ career.name }}</a>
+              {% else %}
+                <span class="pill">{{ career.name }}</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+    {% if not has_profile %}
+      <p class="small muted" style="margin-top:.8rem;">Fill the form above to open a full profile and see your personal match for each career.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section cg-about" id="about" style="padding-top:0;">
+  <div class="container">
+    <div class="cg-about-card">
+      <div>
+        <span class="eyebrow">About CareerGuide</span>
+        <h2>Clarity about your next step — without the guesswork</h2>
+        <p>
+          CareerGuide is the career-guidance module of the AI Resume Builder and Career Recommendation
+          System. It helps students understand their strengths, identify suitable career paths, discover
+          missing skills, improve their knowledge and plan their professional future.
+        </p>
+        <ul class="cg-about-list">
+          <li><strong>Understand your strengths</strong> — the skills you already have are shown against every career.</li>
+          <li><strong>Identify suitable paths</strong> — five ranked matches, each with a clear reason.</li>
+          <li><strong>Discover missing skills</strong> — the exact gaps for the roles you want, not vague advice.</li>
+          <li><strong>Improve your knowledge</strong> — staged topics, projects and official learning links.</li>
+          <li><strong>Plan your future</strong> — a roadmap that starts today and ends with an interview-ready portfolio.</li>
+        </ul>
+      </div>
+      <aside class="cg-about-aside">
+        <h3>Built as an academic project</h3>
+        <p class="small">
+          Developed by two B.Tech students in Artificial Intelligence &amp; Data Science. The recommendation
+          engine is intentionally explainable: a fixed weighted formula over a curated 40-career dataset,
+          with no random or manufactured percentages.
+        </p>
+        <p class="small">
+          Results are guidance, not a verdict. Use them to explore, then verify requirements with real job
+          descriptions and people working in the field.
+        </p>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('resume_entry') }}">Build a matching resume</a>
+      </aside>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/chips.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/career.js') }}" defer></script>
+{% endblock %}
